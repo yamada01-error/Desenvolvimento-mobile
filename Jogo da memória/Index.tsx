@@ -6,18 +6,19 @@ interface Carta {
   valor: string;
   virada: boolean;
   encontrada: boolean;
+  errada: boolean;
 }
 
 type Nivel = 1 | 2 | 3;
 
-const SIMBOLOS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'];
+const SIMBOLOS = ['🐶', '🐱', '🦊', '🐼', '🐸', '🦄', '🐧', '🐢'];
 const CARTAS_POR_NIVEL: Record<Nivel, number> = { 1: 8, 2: 12, 3: 16 };
 
 function gerarCartas(nivel: Nivel): Carta[] {
   const total = CARTAS_POR_NIVEL[nivel];
   const pares = SIMBOLOS.slice(0, total / 2);
   return [...pares, ...pares]
-    .map((valor, i) => ({ id: i, valor, virada: false, encontrada: false }))
+    .map((valor, i) => ({ id: i, valor, virada: false, encontrada: false, errada: false }))
     .sort(() => Math.random() - 0.5);
 }
 
@@ -57,6 +58,7 @@ function CartaItem({ carta, onPress }: { carta: Carta; onPress: () => void }) {
           styles.face,
           styles.frente,
           carta.encontrada && styles.frenteEncontrada,
+          carta.errada && styles.frenteErrada,
           { transform: [{ perspective: 800 }, { rotateY: rotarFrente }] },
         ]}
       >
@@ -110,9 +112,14 @@ export default function Page() {
         );
         setViradas([]);
       } else {
+        setCartas(cs =>
+          cs.map(c => (c.id === id1 || c.id === id2 ? { ...c, errada: true } : c))
+        );
         setTimeout(() => {
           setCartas(cs =>
-            cs.map(c => (c.id === id1 || c.id === id2 ? { ...c, virada: false } : c))
+            cs.map(c =>
+              c.id === id1 || c.id === id2 ? { ...c, virada: false, errada: false } : c
+            )
           );
           setViradas([]);
         }, 800);
@@ -124,6 +131,14 @@ export default function Page() {
     const prox = (nivel + 1) as Nivel;
     setNivel(prox);
     setCartas(gerarCartas(prox));
+    setViradas([]);
+    setTempo(0);
+    setRodando(true);
+    setNivelCompleto(false);
+  }
+
+  function reiniciarNivel() {
+    setCartas(gerarCartas(nivel));
     setViradas([]);
     setTempo(0);
     setRodando(true);
@@ -170,24 +185,35 @@ export default function Page() {
           )}
         </View>
       ) : (
-        <View style={styles.grid}>
-          {cartas.map(carta => (
-            <CartaItem key={carta.id} carta={carta} onPress={() => virarCarta(carta.id)} />
-          ))}
-        </View>
+        <>
+          <View style={styles.grid}>
+            {cartas.map(carta => (
+              <CartaItem key={carta.id} carta={carta} onPress={() => virarCarta(carta.id)} />
+            ))}
+          </View>
+          <Pressable style={styles.botaoReiniciar} onPress={reiniciarNivel}>
+            <Text style={styles.botaoReiniciarTexto}>Reiniciar nível</Text>
+          </Pressable>
+        </>
       )}
     </View>
   );
 }
 
 const CORES = {
-  fundo: '#e8e5df',
-  painel: '#d6d2c8',
-  texto: '#3d3a34',
-  verso: '#b6b0a3',
-  frente: '#f2f0ea',
-  encontrada: '#a3a99c',
-  acao: '#706b5e',
+  fundo: '#eaf2ff',
+  painel: '#1d4ed8',
+  painelTexto: '#ffffff',
+  texto: '#0f2a5c',
+  verso: '#1d4ed8',
+  versoTexto: '#ffffff',
+  frente: '#ffffff',
+  frenteBorda: '#bfd7ff',
+  encontrada: '#dbeafe',
+  encontradaBorda: '#3b82f6',
+  errada: '#fee2e2',
+  erradaBorda: '#f3a3a3',
+  acao: '#1d4ed8',
 };
 
 const styles = StyleSheet.create({
@@ -215,7 +241,7 @@ const styles = StyleSheet.create({
   },
   painelTexto: {
     fontWeight: '600',
-    color: CORES.texto,
+    color: CORES.painelTexto,
   },
   grid: {
     flexDirection: 'row',
@@ -236,25 +262,35 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     backfaceVisibility: 'hidden',
+    shadowColor: '#1d4ed8',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 3,
+    elevation: 2,
   },
   verso: {
     backgroundColor: CORES.verso,
   },
   frente: {
     backgroundColor: CORES.frente,
+    borderWidth: 1.5,
+    borderColor: CORES.frenteBorda,
   },
   frenteEncontrada: {
     backgroundColor: CORES.encontrada,
+    borderColor: CORES.encontradaBorda,
+  },
+  frenteErrada: {
+    backgroundColor: CORES.errada,
+    borderColor: CORES.erradaBorda,
   },
   textoVerso: {
-    fontSize: 20,
+    fontSize: 22,
     fontWeight: '700',
-    color: CORES.acao,
+    color: CORES.versoTexto,
   },
   textoFrente: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: CORES.texto,
+    fontSize: 28,
   },
   mensagem: {
     marginTop: 30,
@@ -276,5 +312,17 @@ const styles = StyleSheet.create({
   botaoAcaoTexto: {
     color: '#fff',
     fontSize: 16,
+  },
+  botaoReiniciar: {
+    marginTop: 20,
+    paddingVertical: 10,
+    paddingHorizontal: 18,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: CORES.acao,
+  },
+  botaoReiniciarTexto: {
+    color: CORES.acao,
+    fontWeight: '600',
   },
 });
