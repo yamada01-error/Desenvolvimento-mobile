@@ -9,22 +9,33 @@ type Produto = {
   estoque: number;
 };
 
+type Mesa = {
+  id: number;
+  nome: string;
+  disponivel: boolean;
+};
+
 export default function Home() {
   const [produtos, setProdutos] = useState<Produto[]>([]);
+  const [mesas, setMesas] = useState<Mesa[]>([]);
   const [carregando, setCarregando] = useState(true);
 
   useEffect(() => {
-    buscarProdutos();
+    buscarDados();
   }, []);
 
-  async function buscarProdutos() {
+  async function buscarDados() {
     setCarregando(true);
-    const { data, error } = await supabase.from('produtos').select('*');
-    if (!error && data) setProdutos(data as Produto[]);
+    const [produtosRes, mesasRes] = await Promise.all([
+      supabase.from('produtos').select('*'),
+      supabase.from('mesas').select('*'),
+    ]);
+    if (!produtosRes.error && produtosRes.data) setProdutos(produtosRes.data as Produto[]);
+    if (!mesasRes.error && mesasRes.data) setMesas(mesasRes.data as Mesa[]);
     setCarregando(false);
   }
 
-  function renderItem({ item }: { item: Produto }) {
+  function renderProduto({ item }: { item: Produto }) {
     const emFalta = item.estoque <= 0;
     return (
       <View style={styles.card}>
@@ -45,22 +56,58 @@ export default function Home() {
     );
   }
 
-  return (
-    <View style={styles.container}>
-      <Text style={styles.header}>☕ MaisCafé</Text>
-      <Text style={styles.subheader}>Nosso cardápio</Text>
+  function renderMesa({ item }: { item: Mesa }) {
+    return (
+      <View style={styles.mesaCard}>
+        <Text
+          style={[
+            styles.mesaNome,
+            { color: item.disponivel ? '#2E7D32' : '#C62828' },
+          ]}
+        >
+          {item.nome}
+        </Text>
+        <Text style={styles.mesaStatus}>
+          {item.disponivel ? 'Disponível' : 'Ocupada'}
+        </Text>
+      </View>
+    );
+  }
 
-      {carregando ? (
-        <ActivityIndicator color="#6F4E37" style={{ marginTop: 40 }} />
-      ) : (
-        <FlatList
-          data={produtos}
-          keyExtractor={(item) => String(item.id)}
-          renderItem={renderItem}
-          contentContainerStyle={{ paddingBottom: 24 }}
-        />
-      )}
-    </View>
+  if (carregando) {
+    return (
+      <View style={styles.container}>
+        <ActivityIndicator color="#6F4E37" style={{ marginTop: 60 }} />
+      </View>
+    );
+  }
+
+  return (
+    <FlatList
+      style={styles.container}
+      contentContainerStyle={{ paddingBottom: 24 }}
+      data={produtos}
+      keyExtractor={(item) => String(item.id)}
+      renderItem={renderProduto}
+      ListHeaderComponent={
+        <>
+          <Text style={styles.header}>☕ MaisCafé</Text>
+
+          <Text style={styles.subheader}>Mesas do estabelecimento</Text>
+          <FlatList
+            data={mesas}
+            keyExtractor={(item) => String(item.id)}
+            renderItem={renderMesa}
+            numColumns={2}
+            columnWrapperStyle={{ gap: 12 }}
+            contentContainerStyle={{ gap: 12, marginBottom: 24 }}
+            scrollEnabled={false}
+          />
+
+          <Text style={styles.subheader}>Nosso cardápio</Text>
+        </>
+      }
+    />
   );
 }
 
@@ -79,7 +126,8 @@ const styles = StyleSheet.create({
   subheader: {
     fontSize: 14,
     color: '#8D6E63',
-    marginBottom: 20,
+    marginBottom: 12,
+    marginTop: 4,
   },
   card: {
     flexDirection: 'row',
@@ -124,5 +172,25 @@ const styles = StyleSheet.create({
     color: '#B5482B',
     fontSize: 12,
     fontWeight: '600',
+  },
+  mesaCard: {
+    flex: 1,
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 14,
+    paddingVertical: 20,
+    shadowColor: '#4E342E',
+    shadowOpacity: 0.08,
+    shadowRadius: 6,
+    elevation: 2,
+  },
+  mesaNome: {
+    fontSize: 18,
+    fontWeight: 'bold',
+  },
+  mesaStatus: {
+    fontSize: 12,
+    color: '#8D6E63',
+    marginTop: 4,
   },
 });
